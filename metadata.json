@@ -1,0 +1,6 @@
+{
+  "name": "Daily Attendance Pad",
+  "description": "A mobile-optimized notepad for organizing daily operations, tracking time-in, time-out, and job contact info.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

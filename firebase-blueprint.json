@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "AttendanceEntry": {
+      "title": "AttendanceEntry",
+      "description": "An entry for daily, contract or container work",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "timeIn": { "type": "string" },
+        "timeOut": { "type": "string" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "jobType": { "type": "string", "enum": ["daily", "contract", "container"] },
+        "billed": { "type": "boolean" },
+        "createdAt": { "type": "number" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "date", "name", "createdAt", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/AttendanceEntry" },
+      "description": "User's attendance and container entries"
+    }
+  }
+}
