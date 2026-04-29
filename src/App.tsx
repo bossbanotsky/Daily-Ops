@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { format, addDays, subDays } from 'date-fns';
-import { Plus, ChevronLeft, ChevronRight, User, Clock, Briefcase, Trash2, Edit2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { format, addDays, subDays, parseISO } from 'date-fns';
+import { Plus, ChevronLeft, ChevronRight, User, Clock, Briefcase, Trash2, Edit2, Calendar } from 'lucide-react';
 import { useAttendanceData } from './hooks/useAttendanceData';
 import { EntryForm } from './components/EntryForm';
 import { AttendanceEntry } from './types';
@@ -26,6 +26,43 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<AttendanceEntry | undefined>();
   const [activeTab, setActiveTab] = useState<'daily' | 'contract' | 'container' | 'billing'>('daily');
+  const [dailyRange, setDailyRange] = useState(() => {
+    const saved = localStorage.getItem('daily_range');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved daily range', e);
+      }
+    }
+    return {
+      start: format(new Date(), 'yyyy-MM-dd'),
+      end: format(new Date(), 'yyyy-MM-dd')
+    };
+  });
+  
+  const [contractRange, setContractRange] = useState(() => {
+    const saved = localStorage.getItem('contract_range');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved contract range', e);
+      }
+    }
+    return {
+      start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+      end: format(new Date(), 'yyyy-MM-dd')
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('daily_range', JSON.stringify(dailyRange));
+  }, [dailyRange]);
+
+  useEffect(() => {
+    localStorage.setItem('contract_range', JSON.stringify(contractRange));
+  }, [contractRange]);
 
   const dateStr = format(currentDate, 'yyyy-MM-dd');
   const todaysEntries = entries.filter(e => e.date === dateStr).sort((a,b) => b.createdAt - a.createdAt);
@@ -52,8 +89,18 @@ export default function App() {
     }
   };
 
-  const dailyEntries = todaysEntries.filter(e => e.jobType !== 'contract' && e.jobType !== 'container');
-  const contractEntries = todaysEntries.filter(e => e.jobType === 'contract');
+  const dailyEntries = entries.filter(e => 
+    e.jobType !== 'contract' && 
+    e.jobType !== 'container' && 
+    e.date >= dailyRange.start && 
+    e.date <= dailyRange.end
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  const contractEntries = entries.filter(e => 
+    e.jobType === 'contract' && 
+    e.date >= contractRange.start && 
+    e.date <= contractRange.end
+  ).sort((a,b) => b.createdAt - a.createdAt);
   const containerEntries = entries.filter(e => e.jobType === 'container' && !e.billed).sort((a,b) => b.createdAt - a.createdAt);
   const billingEntries = entries.filter(e => e.jobType === 'container' && e.billed).sort((a,b) => b.createdAt - a.createdAt);
 
@@ -63,7 +110,7 @@ export default function App() {
       onClick={() => openEditEntry(entry)}
       className="flex gap-3 border-b border-stone-100 pb-3 hover:bg-stone-50 px-2 pt-2 rounded transition-colors cursor-pointer group items-start"
     >
-      {(activeTab === 'container' || activeTab === 'billing') && (
+      {(activeTab === 'container' || activeTab === 'billing' || activeTab === 'contract' || (activeTab === 'daily' && (dailyRange.start !== dailyRange.end))) && (
         <span className="text-[10px] font-black text-stone-400 mt-1 w-4 text-right shrink-0">
           {index + 1}.
         </span>
@@ -86,11 +133,13 @@ export default function App() {
             <span className="font-black text-stone-900 uppercase text-sm leading-tight whitespace-pre-wrap break-words">
               {entry.name}
             </span>
-            {(activeTab === 'container' || activeTab === 'billing') && (
-              <div className="self-start">
-                <span className="text-[9px] font-black uppercase text-stone-400 border border-stone-200 px-1 py-0.5 rounded-sm whitespace-nowrap bg-white">
-                  {format(entry.createdAt, 'MMM d')}
-                </span>
+            {(activeTab === 'container' || activeTab === 'billing' || activeTab === 'contract') && (
+              <div className="flex flex-wrap gap-1">
+                {activeTab === 'contract' && entry.status && (
+                  <span className="text-[9px] font-black uppercase text-stone-900 border border-stone-900 px-1 py-0.5 rounded-sm whitespace-nowrap bg-stone-100">
+                    {entry.status}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -126,9 +175,11 @@ export default function App() {
           </div>
         </div>
         {entry.notes && (
-          <span className="text-[10px] font-mono text-stone-500 font-bold mt-0.5 whitespace-pre-wrap break-words">
-            {entry.notes}
-          </span>
+          <div className="mt-1 bg-stone-100 p-2 rounded-sm border-l-2 border-stone-300">
+            <span className="text-[10px] font-mono text-stone-600 font-bold whitespace-pre-wrap break-words block">
+              {entry.notes}
+            </span>
+          </div>
         )}
       </div>
     </div>
@@ -137,8 +188,12 @@ export default function App() {
   const renderEntryGroup = (groupEntries: AttendanceEntry[], title: string) => {
     if (groupEntries.length === 0) return null;
     return (
-      <div className="mb-6">
-        <h4 className="text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2 border-b border-stone-100 pb-1">{title}</h4>
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-[2px] flex-1 bg-stone-200"></div>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-900 whitespace-nowrap bg-stone-50 px-2 py-1 rounded border border-stone-200 shadow-sm">{title}</h4>
+          <div className="h-[2px] flex-1 bg-stone-200"></div>
+        </div>
         <div className="space-y-1">
           {groupEntries.map((entry, index) => renderEntryItem(entry, index))}
         </div>
@@ -147,6 +202,22 @@ export default function App() {
   };
 
   const currentEntries = activeTab === 'daily' ? dailyEntries : activeTab === 'contract' ? contractEntries : activeTab === 'container' ? containerEntries : billingEntries;
+
+  // Grouping logic for date-based display
+  const groupEntriesByDate = (entriesToGroup: AttendanceEntry[]) => {
+    const groups: { [key: string]: AttendanceEntry[] } = {};
+    entriesToGroup.forEach(entry => {
+      if (!groups[entry.date]) groups[entry.date] = [];
+      groups[entry.date].push(entry);
+    });
+    return Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(date => ({
+      date,
+      entries: groups[date]
+    }));
+  };
+
+  const dailyGroups = groupEntriesByDate(dailyEntries);
+  const contractGroups = groupEntriesByDate(contractEntries);
 
   return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center sm:p-8">
@@ -205,7 +276,66 @@ export default function App() {
             <p className="text-[10px] font-mono font-bold mt-1 text-stone-400">Tap + to add a record.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <>
+            {activeTab === 'daily' && (
+              <div className="mb-4 bg-stone-900 p-4 rounded-xl text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar size={14} className="text-stone-400" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Daily Range Filter</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase text-stone-500">From</p>
+                    <input 
+                      type="date" 
+                      value={dailyRange.start}
+                      onChange={(e) => setDailyRange(prev => ({ ...prev, start: e.target.value }))}
+                      className="w-full bg-stone-800 border-none rounded p-2 text-xs font-bold focus:ring-1 focus:ring-stone-400 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase text-stone-500">To</p>
+                    <input 
+                      type="date" 
+                      value={dailyRange.end}
+                      onChange={(e) => setDailyRange(prev => ({ ...prev, end: e.target.value }))}
+                      className="w-full bg-stone-800 border-none rounded p-2 text-xs font-bold focus:ring-1 focus:ring-stone-400 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'contract' && (
+              <div className="mb-4 bg-stone-900 p-4 rounded-xl text-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar size={14} className="text-stone-400" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Date Range Filter</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase text-stone-500">From</p>
+                    <input 
+                      type="date" 
+                      value={contractRange.start}
+                      onChange={(e) => setContractRange(prev => ({ ...prev, start: e.target.value }))}
+                      className="w-full bg-stone-800 border-none rounded p-2 text-xs font-bold focus:ring-1 focus:ring-stone-400 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black uppercase text-stone-500">To</p>
+                    <input 
+                      type="date" 
+                      value={contractRange.end}
+                      onChange={(e) => setContractRange(prev => ({ ...prev, end: e.target.value }))}
+                      className="w-full bg-stone-800 border-none rounded p-2 text-xs font-bold focus:ring-1 focus:ring-stone-400 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-6">
             <div>
               <div className="border-b-2 border-stone-200 pb-2 mb-3 flex items-center justify-between">
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-stone-400">
@@ -215,19 +345,26 @@ export default function App() {
               </div>
               <div className="space-y-1">
                 {activeTab === 'daily' ? (
-                  <>
-                    {renderEntryGroup(currentEntries.filter(e => e.timeIn && e.timeOut), 'With Time In & Out')}
-                    {renderEntryGroup(currentEntries.filter(e => e.timeIn && !e.timeOut), 'With Time In Only')}
-                    {renderEntryGroup(currentEntries.filter(e => !e.timeIn && !e.timeOut), 'No Time In/Out')}
-                  </>
+                  dailyGroups.map(group => (
+                    <div key={group.date}>
+                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'))}
+                    </div>
+                  ))
+                ) : activeTab === 'contract' ? (
+                  contractGroups.map(group => (
+                    <div key={group.date}>
+                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'))}
+                    </div>
+                  ))
                 ) : (
                   currentEntries.map((entry, index) => renderEntryItem(entry, index))
                 )}
               </div>
             </div>
           </div>
-        )}
-      </main>
+        </>
+      )}
+    </main>
 
       {/* Mobile Bottom Nav (Decorative / Actionable) */}
       <div className="px-6 py-4 bg-white flex justify-between items-center border-t border-stone-100 absolute bottom-0 left-0 right-0 z-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
