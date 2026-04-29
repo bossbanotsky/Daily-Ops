@@ -21,6 +21,8 @@ export default defineConfig(({mode}) => {
           background_color: '#fafaf9',
           display: 'standalone',
           orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
           icons: [
             {
               src: 'https://cdn0.iconfinder.com/data/icons/business-management-44/64/clipboard-list-attendance-document-report-512.png',

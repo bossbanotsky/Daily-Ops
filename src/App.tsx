@@ -315,6 +315,13 @@ export default function App() {
             <ChevronRight size={20} className="text-stone-600 group-hover:translate-x-1 transition-transform" />
           </button>
         )}
+        
+        {/* iOS Instruction Message */}
+        {/iPhone|iPad|iPod/.test(navigator.platform) && !window.matchMedia('(display-mode: standalone)').matches && (
+          <div className="mb-6 bg-stone-100 p-4 rounded-xl text-stone-600 text-xs text-center border border-stone-200">
+            <p><strong>Tip:</strong> Tap the <strong>Share</strong> button and select <strong>"Add to Home Screen"</strong> to install this app on your iPhone.</p>
+          </div>
+        )}
 
         {currentEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-stone-300">
