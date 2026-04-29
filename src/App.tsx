@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { format, addDays, subDays, parseISO } from 'date-fns';
-import { Plus, ChevronLeft, ChevronRight, User, Clock, Briefcase, Trash2, Edit2, Calendar } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, User, Clock, Briefcase, Trash2, Edit2, Calendar, Download } from 'lucide-react';
 import { useAttendanceData } from './hooks/useAttendanceData';
 import { EntryForm } from './components/EntryForm';
 import { AttendanceEntry } from './types';
 import { cn } from './lib/utils';
+import { registerSW } from 'virtual:pwa-register';
+
+// Register service worker
+registerSW({ immediate: true });
 
 const formatTimeAMPM = (timeStr?: string) => {
   if (!timeStr) return '--:--';
@@ -21,7 +25,32 @@ const formatTimeAMPM = (timeStr?: string) => {
 export default function App() {
   const { entries, addEntries, updateEntry, deleteEntry } = useAttendanceData();
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
   
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+  };
+
   // State for Form Modal
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<AttendanceEntry | undefined>();
@@ -269,6 +298,24 @@ export default function App() {
 
       {/* Main Content / List */}
       <main className="flex-1 overflow-y-auto px-6 py-4 pb-32">
+        {showInstallBtn && (
+          <button 
+            onClick={handleInstallClick}
+            className="w-full mb-6 py-3 px-4 bg-stone-900 border-2 border-stone-800 rounded-xl text-white flex items-center justify-between group active:scale-[0.98] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-stone-800 rounded-lg">
+                <Download size={20} className="text-stone-300" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest text-stone-500 leading-none mb-1">Install App</p>
+                <p className="text-sm font-black uppercase text-white">Add to Home Screen</p>
+              </div>
+            </div>
+            <ChevronRight size={20} className="text-stone-600 group-hover:translate-x-1 transition-transform" />
+          </button>
+        )}
+
         {currentEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-stone-300">
             <Briefcase size={48} className="mb-3 opacity-20" strokeWidth={3} />
