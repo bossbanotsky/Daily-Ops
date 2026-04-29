@@ -7,9 +7,6 @@ import { AttendanceEntry } from './types';
 import { cn } from './lib/utils';
 import { registerSW } from 'virtual:pwa-register';
 
-// Register service worker
-registerSW({ immediate: true });
-
 const formatTimeAMPM = (timeStr?: string) => {
   if (!timeStr) return '--:--';
   const parts = timeStr.split(':');
@@ -27,8 +24,19 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBtn, setShowInstallBtn] = useState(false);
-  
+  const [showIOSHint, setShowIOSHint] = useState(false);
+
   useEffect(() => {
+    // Register service worker
+    registerSW({ immediate: true });
+
+    // iOS/Install check
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.platform);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+      setShowIOSHint(true);
+    }
+
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -316,8 +324,7 @@ export default function App() {
           </button>
         )}
         
-        {/* iOS Instruction Message */}
-        {/iPhone|iPad|iPod/.test(navigator.platform) && !window.matchMedia('(display-mode: standalone)').matches && (
+        {showIOSHint && (
           <div className="mb-6 bg-stone-100 p-4 rounded-xl text-stone-600 text-xs text-center border border-stone-200">
             <p><strong>Tip:</strong> Tap the <strong>Share</strong> button and select <strong>"Add to Home Screen"</strong> to install this app on your iPhone.</p>
           </div>
