@@ -28,25 +28,41 @@ export default function App() {
 
   useEffect(() => {
     // Register service worker
-    registerSW({ immediate: true });
+    registerSW({ 
+      immediate: true,
+      onRegistered(r) {
+        console.log('SW Registered:', r);
+      },
+      onRegisterError(error) {
+        console.error('SW Registration Error:', error);
+      }
+    });
 
     // iOS/Install check
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.platform);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     if (isIOS && !isStandalone) {
       setShowIOSHint(true);
     }
 
     const handler = (e: any) => {
+      console.log('beforeinstallprompt fired');
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallBtn(true);
     };
 
+    const installedHandler = () => {
+      console.log('App installed');
+      setShowInstallBtn(false);
+    };
+
     window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
     };
   }, []);
 

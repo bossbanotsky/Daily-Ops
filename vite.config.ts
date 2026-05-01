@@ -12,7 +12,6 @@ export default defineConfig(({mode}) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
           name: 'Attendance Pad',
           short_name: 'AttendPad',
@@ -23,6 +22,13 @@ export default defineConfig(({mode}) => {
           orientation: 'portrait',
           start_url: '/',
           scope: '/',
+          shortcuts: [
+            {
+              name: 'Today\'s Logs',
+              url: '/',
+              description: 'View today\'s attendance logs'
+            }
+          ],
           icons: [
             {
               src: 'https://cdn0.iconfinder.com/data/icons/business-management-44/64/clipboard-list-attendance-document-report-512.png',
@@ -34,12 +40,18 @@ export default defineConfig(({mode}) => {
               src: 'https://cdn0.iconfinder.com/data/icons/business-management-44/64/clipboard-list-attendance-document-report-512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any'
+            },
+            {
+              src: 'https://cdn0.iconfinder.com/data/icons/business-management-44/64/clipboard-list-attendance-document-report-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+          globPatterns: ['**/*.{js,css,html,json}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/cdn0\.iconfinder\.com\/.*/i,
