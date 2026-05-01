@@ -63,6 +63,20 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<AttendanceEntry | undefined>();
   const [activeTab, setActiveTab] = useState<'daily' | 'contract' | 'container' | 'billing'>('daily');
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
+  
+  const toggleDateCollapse = (date: string) => {
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  };
+  
   const [dailyRange, setDailyRange] = useState(() => {
     const saved = localStorage.getItem('daily_range');
     if (saved) {
@@ -222,18 +236,25 @@ export default function App() {
     </div>
   );
 
-  const renderEntryGroup = (groupEntries: AttendanceEntry[], title: string) => {
+  const renderEntryGroup = (groupEntries: AttendanceEntry[], title: string, date: string, isCollapsed: boolean, onToggle: () => void) => {
     if (groupEntries.length === 0) return null;
     return (
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-[2px] flex-1 bg-stone-200"></div>
-          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-900 whitespace-nowrap bg-stone-50 px-2 py-1 rounded border border-stone-200 shadow-sm">{title}</h4>
-          <div className="h-[2px] flex-1 bg-stone-200"></div>
+        <div 
+          onClick={onToggle}
+          className="flex items-center gap-3 mb-3 cursor-pointer group"
+        >
+          <div className="h-[2px] flex-1 bg-stone-200 group-hover:bg-stone-300"></div>
+          <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-900 whitespace-nowrap bg-stone-50 px-2 py-1 rounded border border-stone-200 shadow-sm group-hover:border-stone-400 transition-colors">
+            {isCollapsed ? `▼ ${title}` : `▲ ${title}`}
+          </h4>
+          <div className="h-[2px] flex-1 bg-stone-200 group-hover:bg-stone-300"></div>
         </div>
-        <div className="space-y-1">
-          {groupEntries.map((entry, index) => renderEntryItem(entry, index))}
-        </div>
+        {!isCollapsed && (
+          <div className="space-y-1">
+            {groupEntries.map((entry, index) => renderEntryItem(entry, index))}
+          </div>
+        )}
       </div>
     );
   };
@@ -408,13 +429,13 @@ export default function App() {
                 {activeTab === 'daily' ? (
                   dailyGroups.map(group => (
                     <div key={group.date}>
-                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'))}
+                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'), group.date, collapsedDates.has(group.date), () => toggleDateCollapse(group.date))}
                     </div>
                   ))
                 ) : activeTab === 'contract' ? (
                   contractGroups.map(group => (
                     <div key={group.date}>
-                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'))}
+                      {renderEntryGroup(group.entries, format(parseISO(group.date), 'EEEE, MMM d'), group.date, collapsedDates.has(group.date), () => toggleDateCollapse(group.date))}
                     </div>
                   ))
                 ) : (
